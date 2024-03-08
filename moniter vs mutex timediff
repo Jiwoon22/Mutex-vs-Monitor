@@ -1,0 +1,103 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Mutex_Test
+{
+   
+    class Program
+    {
+        static int num=0;
+        static void Main(string[] args)
+        {
+            
+
+            // Mutex 락킹 성능 테스트
+            Console.WriteLine("Mutex 락킹 성능 테스트 시작");
+            TestMutex(num);
+            Console.WriteLine("Mutex 락킹 성능 테스트 종료 \n"+num);
+
+            // Monitor 락킹 성능 테스트
+            Console.WriteLine("Monitor 락킹 성능 테스트 시작");
+            TestMonitor(num);
+            Console.WriteLine("Monitor 락킹 성능 테스트 종료"+num);
+        }
+
+        static void TestMutex(int iterations)
+        {
+            Mutex mutex = new Mutex();
+
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            Thread[] threads = new Thread[3];
+            for (int i = 0; i < threads.Length; i++)
+            {
+                threads[i] = new Thread(() =>
+                {
+                    for (int j = 0; j < 10000; j++)
+                    {
+                        mutex.WaitOne();
+                        try
+                        {
+                            num++;
+                        }
+                        finally
+                        {
+                            mutex.ReleaseMutex();
+                        }
+                        
+                    }
+                });
+                threads[i].Start();
+            }
+
+            foreach (var thread in threads)
+            {
+                thread.Join();
+            }
+
+            stopwatch.Stop();
+            Console.WriteLine($"Mutex 락킹 시간: {stopwatch.ElapsedMilliseconds}ms "+num);
+        }
+
+        static void TestMonitor(int iterations)
+        {
+            object locker = new object();
+
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            Thread[] threads = new Thread[3];
+            for (int i = 0; i < threads.Length; i++)
+            {
+                threads[i] = new Thread(() =>
+                {
+                    for (int j = 0; j < 10000; j++)
+                    {
+                        Monitor.Enter(locker);
+                        try
+                        {
+                            num++;
+                        }
+                        finally
+                        {
+                            Monitor.Exit(locker);
+                        }
+                    }
+                });
+                threads[i].Start();
+            }
+
+            foreach (var thread in threads)
+            {
+                thread.Join();
+            }
+
+            stopwatch.Stop();
+            Console.WriteLine($"Monitor 락킹 시간: {stopwatch.ElapsedMilliseconds}ms "+num);
+        }
+    }
+}
+// Monitor = 하나의 프로세스 내에서만 사용 가능
+// Mutex = 해당 머신의 프로세스간에서도 배타적 lock을 위해 사용된다. 
